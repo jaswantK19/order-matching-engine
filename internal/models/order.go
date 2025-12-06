@@ -25,3 +25,12 @@ type Order struct {
 
 	Next *Order `json:"-"` // pointing to the next order in the same price
 }
+
+type Trade struct {
+	TradeID   string `json:"trade_id"`
+	Price     int64 `json:"price"`
+	Quantity  int64 `json:"quantity"`
+	Timestamp int64  `json:"timestamp"`
+	MakerID  string `json:"maker_id"`
+	TakerID   string `json:"taker_id"`
+}
