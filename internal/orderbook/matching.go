@@ -11,6 +11,7 @@ type MatchResult struct {
 	Trades            []models.Trade
 	FilledQuantity    int64
 	RemainingQuantity int64
+	OrdersFilled      int64
 	Status            string
 	Error             error
 }
@@ -63,12 +64,12 @@ func (ob *OrderBook) ProcessOrder(order *models.Order) MatchResult {
 		quantityToTrade := min(makerOrder.Quantity, order.Quantity)
 
 		trade := models.Trade{
-			TradeID: fmt.Sprintf("t-%d", time.Now().UnixNano()),
-			Price: bestLevel.Price,
-			Quantity: quantityToTrade,
+			TradeID:   fmt.Sprintf("t-%d", time.Now().UnixNano()),
+			Price:     bestLevel.Price,
+			Quantity:  quantityToTrade,
 			Timestamp: time.Now().UnixNano(),
-			MakerID: makerOrder.ID,
-			TakerID: order.ID,
+			MakerID:   makerOrder.ID,
+			TakerID:   order.ID,
 		}
 		result.Trades = append(result.Trades, trade)
 
@@ -78,6 +79,8 @@ func (ob *OrderBook) ProcessOrder(order *models.Order) MatchResult {
 
 		if makerOrder.Quantity == 0 {
 			bestLevel.Remove()
+			delete(ob.Orders, makerOrder.ID)
+			result.OrdersFilled++
 		}
 
 		if bestLevel.Head == nil {
@@ -98,7 +101,7 @@ func (ob *OrderBook) ProcessOrder(order *models.Order) MatchResult {
 		if order.Type == models.TypeLimit {
 			ob.addOrderToBook(order)
 			result.Status = "ACCEPTED"
-		}else{
+		} else {
 			result.Status = "PARTIAL_FILL"
 		}
 	} else {

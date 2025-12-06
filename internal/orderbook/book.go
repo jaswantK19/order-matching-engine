@@ -1,6 +1,10 @@
 package orderbook
 
-import "github.com/jaswantK19/order-matching-engine/internal/models"
+import (
+	"sort"
+
+	"github.com/jaswantK19/order-matching-engine/internal/models"
+)
 
 type PriceLevel struct {
 	Price         int64         `json:"price"`
@@ -78,17 +82,17 @@ func (ob *OrderBook) addOrderToBook(order *models.Order) {
 }
 
 func (ob *OrderBook) insertBid(order *models.Order) {
-	for i, level := range ob.Bids {
-		if level.Price == order.Price {
-			level.Append(order)
-			return
-		}
-		if level.Price < order.Price {
-			ob.createBidLevel(i, order)
-			return
-		}
+	// Bids are sorted descending (highest price first)
+	// Find the first index where level.Price <= order.Price
+	i := sort.Search(len(ob.Bids), func(i int) bool {
+		return ob.Bids[i].Price <= order.Price
+	})
+
+	if i < len(ob.Bids) && ob.Bids[i].Price == order.Price {
+		ob.Bids[i].Append(order)
+	} else {
+		ob.createBidLevel(i, order)
 	}
-	ob.createBidLevel(len(ob.Bids), order)
 }
 
 func (ob *OrderBook) createBidLevel(index int, order *models.Order) {
@@ -100,17 +104,17 @@ func (ob *OrderBook) createBidLevel(index int, order *models.Order) {
 }
 
 func (ob *OrderBook) insertAsk(order *models.Order) {
-	for i, level := range ob.Asks {
-		if level.Price == order.Price {
-			level.Append(order)
-			return
-		}
-		if level.Price > order.Price {
-			ob.createAskLevel(i, order)
-			return
-		}
+	// Asks are sorted ascending (lowest price first)
+	// Find the first index where level.Price >= order.Price
+	i := sort.Search(len(ob.Asks), func(i int) bool {
+		return ob.Asks[i].Price >= order.Price
+	})
+
+	if i < len(ob.Asks) && ob.Asks[i].Price == order.Price {
+		ob.Asks[i].Append(order)
+	} else {
+		ob.createAskLevel(i, order)
 	}
-	ob.createAskLevel(len(ob.Asks), order)
 }
 
 func (ob *OrderBook) createAskLevel(index int, order *models.Order) {
@@ -132,7 +136,7 @@ func (ob *OrderBook) GetSnapshot(depth int) OrderBookData {
 	if depth > 0 && depth < bidsLen {
 		bidsLen = depth
 	}
-	
+
 	asksLen := len(ob.Asks)
 	if depth > 0 && depth < asksLen {
 		asksLen = depth
