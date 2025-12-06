@@ -8,7 +8,6 @@ import (
 	"github.com/jaswantK19/order-matching-engine/internal/models"
 )
 
-// Helper to create a dummy order
 func newOrder(side models.Side, price int64, qty int64) *models.Order {
 	return &models.Order{
 		ID:        fmt.Sprintf("ord-%d", time.Now().UnixNano()),
@@ -24,15 +23,12 @@ func newOrder(side models.Side, price int64, qty int64) *models.Order {
 func TestSimpleMatch(t *testing.T) {
 	ob := NewOrderBook("AAPL")
 
-	// 1. Add a Sell Order (Maker) @ 150.00
 	sell := newOrder(models.SideSell, 15000, 100)
 	ob.ProcessOrder(sell)
 
-	// 2. Add a Buy Order (Taker) @ 150.00
 	buy := newOrder(models.SideBuy, 15000, 100)
 	result := ob.ProcessOrder(buy)
 
-	// Assertions
 	if result.Status != "FILLED" {
 		t.Errorf("Expected FILLED, got %s", result.Status)
 	}
@@ -44,7 +40,6 @@ func TestSimpleMatch(t *testing.T) {
 	}
 }
 
-// PDF Example: Walking the Book
 func TestWalkingTheBook(t *testing.T) {
 	ob := NewOrderBook("AAPL")
 
@@ -64,7 +59,6 @@ func TestWalkingTheBook(t *testing.T) {
 	}
 }
 
-// PDF Example: FIFO (Time Priority)
 func TestTimePriority(t *testing.T) {
 	ob := NewOrderBook("AAPL")
 

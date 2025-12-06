@@ -52,9 +52,9 @@ type OrderBook struct {
 func NewOrderBook(symbol string) *OrderBook {
 	return &OrderBook{
 		Symbol: symbol,
-		Bids:   make([]*PriceLevel, 0, 100), // Pre-allocating memory helps performance
+		Bids:   make([]*PriceLevel, 0, 100),
 		Asks:   make([]*PriceLevel, 0, 100),
-		Orders: make(map[string]*models.Order), //lookup map
+		Orders: make(map[string]*models.Order),
 	}
 }
 
@@ -121,19 +121,31 @@ func (ob *OrderBook) createAskLevel(index int, order *models.Order) {
 	ob.Asks[index] = newLevel
 }
 
-func (ob *OrderBook) GetSnapshot() OrderBookData {
+func (ob *OrderBook) GetSnapshot(depth int) OrderBookData {
 	snapshot := OrderBookData{
 		Symbol: ob.Symbol,
 		Bids:   make([]PriceLevel, 0),
 		Asks:   make([]PriceLevel, 0),
 	}
 
-	for _, level := range ob.Bids {
+	bidsLen := len(ob.Bids)
+	if depth > 0 && depth < bidsLen {
+		bidsLen = depth
+	}
+	
+	asksLen := len(ob.Asks)
+	if depth > 0 && depth < asksLen {
+		asksLen = depth
+	}
+
+	for i := 0; i < bidsLen; i++ {
+		level := ob.Bids[i]
 		if level.TotalQuantity > 0 {
 			snapshot.Bids = append(snapshot.Bids, *level)
 		}
 	}
-	for _, level := range ob.Asks {
+	for i := 0; i < asksLen; i++ {
+		level := ob.Asks[i]
 		if level.TotalQuantity > 0 {
 			snapshot.Asks = append(snapshot.Asks, *level)
 		}

@@ -1,36 +1,48 @@
 package engine
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/jaswantK19/order-matching-engine/internal/models"
 	"github.com/jaswantK19/order-matching-engine/internal/orderbook"
 )
-
 
 type CommandType int
 const (
 	CmdSubmit CommandType = iota
 	CmdCancel
 	CmdSnapshot
+	CmdGetOrder 
 )
-
 
 type Command struct {
 	Type     CommandType
 	Symbol   string
 	Order    *models.Order 
-	OrderID  string        
+	OrderID  string
+	Depth    int
 	RespChan chan interface{}
+}
+
+type Metrics struct {
+	OrdersReceived  uint64 `json:"orders_received"`
+	OrdersMatched   uint64 `json:"orders_matched"`
+	OrdersCancelled uint64 `json:"orders_cancelled"`
+	TradesExecuted  uint64 `json:"trades_executed"`
 }
 
 type Engine struct {
 	orderbooks map[string]*orderbook.OrderBook
 	inputChan  chan Command
+	orderMap   sync.Map 
+	metrics    Metrics
 }
 
 func NewEngine() *Engine {
 	return &Engine{
 		orderbooks: make(map[string]*orderbook.OrderBook),
-		inputChan:  make(chan Command, 10000),
+		inputChan:  make(chan Command, 100000),
 	}
 }
 
@@ -43,30 +55,52 @@ func (e *Engine) Start() {
 }
 
 func (e *Engine) process(cmd Command) {
-
 	ob, ok := e.orderbooks[cmd.Symbol]
 	if !ok {
-		ob = orderbook.NewOrderBook(cmd.Symbol)
-		e.orderbooks[cmd.Symbol] = ob
+		if cmd.Type == CmdSubmit {
+			ob = orderbook.NewOrderBook(cmd.Symbol)
+			e.orderbooks[cmd.Symbol] = ob
+		} else {
+			cmd.RespChan <- nil
+			return
+		}
 	}
-
 
 	switch cmd.Type {
 	case CmdSubmit:
+		e.orderMap.Store(cmd.Order.ID, cmd.Symbol)
+		atomic.AddUint64(&e.metrics.OrdersReceived, 1)
+		
 		result := ob.ProcessOrder(cmd.Order)
+		
+		if len(result.Trades) > 0 {
+			atomic.AddUint64(&e.metrics.OrdersMatched, 1)
+			atomic.AddUint64(&e.metrics.TradesExecuted, uint64(len(result.Trades)))
+		}
 		cmd.RespChan <- result
 
 	case CmdCancel:
 		cancelledOrder := ob.CancelOrder(cmd.OrderID)
+		if cancelledOrder != nil {
+			e.orderMap.Delete(cmd.OrderID)
+			atomic.AddUint64(&e.metrics.OrdersCancelled, 1)
+		}
 		cmd.RespChan <- cancelledOrder
 
 	case CmdSnapshot:
-		snapshot := ob.GetSnapshot()
+		snapshot := ob.GetSnapshot(cmd.Depth)
 		cmd.RespChan <- snapshot
+
+	case CmdGetOrder:
+		order, found := ob.Orders[cmd.OrderID]
+		if !found {
+			cmd.RespChan <- nil
+		} else {
+			orderCopy := *order
+			cmd.RespChan <- &orderCopy
+		}
 	}
 }
-
-
 
 func (e *Engine) SubmitOrder(order *models.Order) orderbook.MatchResult {
 	respChan := make(chan interface{})
@@ -79,7 +113,13 @@ func (e *Engine) SubmitOrder(order *models.Order) orderbook.MatchResult {
 	return (<-respChan).(orderbook.MatchResult)
 }
 
-func (e *Engine) CancelOrder(symbol, orderID string) *models.Order {
+func (e *Engine) CancelOrder(orderID string) *models.Order {
+	val, ok := e.orderMap.Load(orderID)
+	if !ok {
+		return nil
+	}
+	symbol := val.(string)
+
 	respChan := make(chan interface{})
 	e.inputChan <- Command{
 		Type:     CmdCancel,
@@ -94,12 +134,44 @@ func (e *Engine) CancelOrder(symbol, orderID string) *models.Order {
 	return result.(*models.Order)
 }
 
-func (e *Engine) GetOrderBook(symbol string) orderbook.OrderBookData {
+func (e *Engine) GetOrder(orderID string) *models.Order {
+	val, ok := e.orderMap.Load(orderID)
+	if !ok {
+		return nil
+	}
+	symbol := val.(string)
+
+	respChan := make(chan interface{})
+	e.inputChan <- Command{
+		Type:     CmdGetOrder,
+		Symbol:   symbol,
+		OrderID:  orderID,
+		RespChan: respChan,
+	}
+	
+	result := <-respChan
+	if result == nil {
+		return nil
+	}
+	return result.(*models.Order)
+}
+
+func (e *Engine) GetOrderBook(symbol string, depth int) orderbook.OrderBookData {
 	respChan := make(chan interface{})
 	e.inputChan <- Command{
 		Type:     CmdSnapshot,
 		Symbol:   symbol,
+		Depth:    depth,
 		RespChan: respChan,
 	}
 	return (<-respChan).(orderbook.OrderBookData)
+}
+
+func (e *Engine) GetMetrics() Metrics {
+	return Metrics{
+		OrdersReceived:  atomic.LoadUint64(&e.metrics.OrdersReceived),
+		OrdersMatched:   atomic.LoadUint64(&e.metrics.OrdersMatched),
+		OrdersCancelled: atomic.LoadUint64(&e.metrics.OrdersCancelled),
+		TradesExecuted:  atomic.LoadUint64(&e.metrics.TradesExecuted),
+	}
 }
