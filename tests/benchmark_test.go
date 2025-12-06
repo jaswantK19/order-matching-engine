@@ -1,4 +1,4 @@
-package engine
+package tests
 
 import (
 	"fmt"
@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jaswantK19/order-matching-engine/internal/engine"
 	"github.com/jaswantK19/order-matching-engine/internal/models"
 )
 
 func BenchmarkRealWorld(b *testing.B) {
-	eng := NewEngine()
+	eng := engine.NewEngine()
 	eng.Start()
 
 	symbols := []string{"AAPL", "GOOG", "TSLA", "AMZN", "MSFT"}

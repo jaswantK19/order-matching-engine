@@ -82,8 +82,6 @@ func (ob *OrderBook) addOrderToBook(order *models.Order) {
 }
 
 func (ob *OrderBook) insertBid(order *models.Order) {
-	// Bids are sorted descending (highest price first)
-	// Find the first index where level.Price <= order.Price
 	i := sort.Search(len(ob.Bids), func(i int) bool {
 		return ob.Bids[i].Price <= order.Price
 	})
@@ -104,8 +102,6 @@ func (ob *OrderBook) createBidLevel(index int, order *models.Order) {
 }
 
 func (ob *OrderBook) insertAsk(order *models.Order) {
-	// Asks are sorted ascending (lowest price first)
-	// Find the first index where level.Price >= order.Price
 	i := sort.Search(len(ob.Asks), func(i int) bool {
 		return ob.Asks[i].Price >= order.Price
 	})

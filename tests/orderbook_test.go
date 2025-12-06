@@ -1,4 +1,4 @@
-package orderbook
+package tests
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jaswantK19/order-matching-engine/internal/models"
+	"github.com/jaswantK19/order-matching-engine/internal/orderbook"
 )
 
 func newOrder(side models.Side, price int64, qty int64) *models.Order {
@@ -21,7 +22,7 @@ func newOrder(side models.Side, price int64, qty int64) *models.Order {
 }
 
 func TestSimpleMatch(t *testing.T) {
-	ob := NewOrderBook("AAPL")
+	ob := orderbook.NewOrderBook("AAPL")
 
 	sell := newOrder(models.SideSell, 15000, 100)
 	ob.ProcessOrder(sell)
@@ -41,7 +42,7 @@ func TestSimpleMatch(t *testing.T) {
 }
 
 func TestWalkingTheBook(t *testing.T) {
-	ob := NewOrderBook("AAPL")
+	ob := orderbook.NewOrderBook("AAPL")
 
 	// Setup: Sell 10 @ 100, Sell 10 @ 101
 	ob.ProcessOrder(newOrder(models.SideSell, 10000, 10))
@@ -60,7 +61,7 @@ func TestWalkingTheBook(t *testing.T) {
 }
 
 func TestTimePriority(t *testing.T) {
-	ob := NewOrderBook("AAPL")
+	ob := orderbook.NewOrderBook("AAPL")
 
 	// Seller A (Early)
 	s1 := newOrder(models.SideSell, 15000, 100)
