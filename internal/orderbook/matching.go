@@ -47,10 +47,20 @@ func (ob *OrderBook) ProcessOrder(order *models.Order) MatchResult {
 
 		makerOrder := bestLevel.Head
 
-		quantityToTrade := order.Quantity
-		if makerOrder.Quantity < quantityToTrade {
-			quantityToTrade = makerOrder.Quantity
+		if makerOrder.Cancelled {
+			bestLevel.Remove()
+			if bestLevel.Head == nil {
+				opponentLevels = opponentLevels[1:]
+				if order.Side == models.SideBuy {
+					ob.Asks = opponentLevels
+				} else {
+					ob.Bids = opponentLevels
+				}
+			}
+			continue
 		}
+
+		quantityToTrade := min(makerOrder.Quantity, order.Quantity)
 
 		trade := models.Trade{
 			TradeID: fmt.Sprintf("t-%d", time.Now().UnixNano()),

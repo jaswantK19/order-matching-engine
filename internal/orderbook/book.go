@@ -34,6 +34,13 @@ func (pl *PriceLevel) Remove() *models.Order {
 	return o
 }
 
+type OrderBookData struct {
+	Symbol string `json:"symbol"`
+	Timestamp int64 `json:"timestamp"`
+	Bids []PriceLevel `json:"bids"`
+	Asks []PriceLevel `json:"asks"`
+}
+
 type OrderBook struct {
 	Symbol string
 	Bids   []*PriceLevel
@@ -50,6 +57,17 @@ func NewOrderBook(symbol string) *OrderBook {
 		Orders: make(map[string]*models.Order), //lookup map
 	}
 }
+
+func (ob *OrderBook) CancelOrder(orderID string) *models.Order {
+	order, exists := ob.Orders[orderID]
+	if !exists {
+		return nil
+	}
+	order.Cancelled = true
+	delete(ob.Orders, orderID)
+	return order
+}
+
 
 func (ob *OrderBook) addOrderToBook(order *models.Order) {
 	ob.Orders[order.ID] = order
@@ -71,6 +89,7 @@ func (ob *OrderBook) insertBid(order *models.Order) {
 			return
 		}
 	}
+	ob.createBidLevel(len(ob.Bids), order)
 }
 
 func (ob *OrderBook) createBidLevel(index int, order *models.Order){
@@ -92,6 +111,7 @@ func (ob *OrderBook) insertAsk(order *models.Order){
 			return
 		}
 	}
+	ob.createAskLevel(len(ob.Asks), order)
 }
 
 func (ob *OrderBook) createAskLevel(index int, order *models.Order) {
@@ -101,5 +121,27 @@ func (ob *OrderBook) createAskLevel(index int, order *models.Order) {
 	copy(ob.Asks[index+1:], ob.Asks[index:])
 	ob.Asks[index] = newLevel
 }
+
+func (ob *OrderBook) GetSnapshot() OrderBookData {
+	snapshot := OrderBookData{
+		Symbol: ob.Symbol,
+		Bids:   make([]PriceLevel, 0),
+		Asks:   make([]PriceLevel, 0),
+	}
+
+	for _, level := range ob.Bids {
+		if level.TotalQuantity > 0 {
+			snapshot.Bids = append(snapshot.Bids, *level)
+		}
+	}
+	for _, level := range ob.Asks {
+		if level.TotalQuantity > 0 {
+			snapshot.Asks = append(snapshot.Asks, *level)
+		}
+	}
+	return snapshot
+}
+
+
 
 

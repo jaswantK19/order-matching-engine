@@ -23,7 +23,8 @@ type Order struct {
 	Quantity  int64     `json:"quantity"`
 	Timestamp int64     `json:"timestamp"`
 
-	Next *Order `json:"-"` // pointing to the next order in the same price
+	Cancelled bool `json:"-"`// pointing to the next order in the same price
+	Next *Order `json:"-"`
 }
 
 type Trade struct {
