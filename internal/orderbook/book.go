@@ -3,10 +3,10 @@ package orderbook
 import "github.com/jaswantK19/order-matching-engine/internal/models"
 
 type PriceLevel struct {
-	Price         int64
-	Head          *models.Order
-	Tail          *models.Order
-	TotalQuantity int64
+	Price         int64         `json:"price"`
+	Head          *models.Order `json:"-"`
+	Tail          *models.Order `json:"-"`
+	TotalQuantity int64         `json:"quantity"`
 }
 
 func (pl *PriceLevel) Append(o *models.Order) {
@@ -35,18 +35,18 @@ func (pl *PriceLevel) Remove() *models.Order {
 }
 
 type OrderBookData struct {
-	Symbol string `json:"symbol"`
-	Timestamp int64 `json:"timestamp"`
-	Bids []PriceLevel `json:"bids"`
-	Asks []PriceLevel `json:"asks"`
+	Symbol    string       `json:"symbol"`
+	Timestamp int64        `json:"timestamp"`
+	Bids      []PriceLevel `json:"bids"`
+	Asks      []PriceLevel `json:"asks"`
 }
 
 type OrderBook struct {
-	Symbol string
-	Bids   []*PriceLevel
-	Asks   []*PriceLevel
+	Symbol string        `json:"symbol"`
+	Bids   []*PriceLevel `json:"bids"`
+	Asks   []*PriceLevel `json:"asks"`
 
-	Orders map[string]*models.Order
+	Orders map[string]*models.Order `json:"-"`
 }
 
 func NewOrderBook(symbol string) *OrderBook {
@@ -67,7 +67,6 @@ func (ob *OrderBook) CancelOrder(orderID string) *models.Order {
 	delete(ob.Orders, orderID)
 	return order
 }
-
 
 func (ob *OrderBook) addOrderToBook(order *models.Order) {
 	ob.Orders[order.ID] = order
@@ -92,7 +91,7 @@ func (ob *OrderBook) insertBid(order *models.Order) {
 	ob.createBidLevel(len(ob.Bids), order)
 }
 
-func (ob *OrderBook) createBidLevel(index int, order *models.Order){
+func (ob *OrderBook) createBidLevel(index int, order *models.Order) {
 	newLevel := &PriceLevel{Price: order.Price}
 	newLevel.Append(order)
 	ob.Bids = append(ob.Bids, nil)
@@ -100,7 +99,7 @@ func (ob *OrderBook) createBidLevel(index int, order *models.Order){
 	ob.Bids[index] = newLevel
 }
 
-func (ob *OrderBook) insertAsk(order *models.Order){
+func (ob *OrderBook) insertAsk(order *models.Order) {
 	for i, level := range ob.Asks {
 		if level.Price == order.Price {
 			level.Append(order)
@@ -141,7 +140,3 @@ func (ob *OrderBook) GetSnapshot() OrderBookData {
 	}
 	return snapshot
 }
-
-
-
-
